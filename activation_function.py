@@ -19,7 +19,10 @@ def Deriv_Sigmoid(x):
     return fx*(1-fx)
 
 def Relu(x):
-    return [max(xi,0) for xi in x]
+    return np.maximum(0, x)
+
+def Deriv_Relu(x):
+    return -np.minimum(0, x)
 
 def Tanh(x):
     return (np.exp(x) - np.exp(-x)) / (np.exp(x)+np.exp(-x))
