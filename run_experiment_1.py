@@ -97,9 +97,9 @@ def renormalize_dataset(norm_dataset,dataset):
     return nor_dataset
 
 """构建数据集"""
-def get_DataSet(start = 0,stop = 2,step = 50):
+def get_DataSet(start = 0,stop = 2,num = 50):
     # 构建样本和标签
-    x_data = np.linspace(start, stop, step)  # 从0-2之间均匀采样的50个样本
+    x_data = np.linspace(start, stop, num)  # 从0-2之间均匀采样的50个样本
     y_data = Target_Function(x_data)
     #print(y_data[0])
     #x_data = normalize(x_data)

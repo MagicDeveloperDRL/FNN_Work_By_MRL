@@ -25,7 +25,6 @@ class Network(object):
         # 偏置
         self.biases_layer_1 = np.random.randn(2,1) # 中间层的偏置矩阵，b1，b2
         self.biases_layer_2 = np.random.randn(1,1)  # 中间层的偏置矩阵，相当于b3
-
     """输入一个多维向量，输出网络的输出"""
     def feedforward(self,x):
         """前向传播得到神经网络的输出"""
@@ -35,7 +34,6 @@ class Network(object):
         # 计算第二层神经元的输出
         sum_layer_2 = self.weights_layer_2 * out_layer_1+self.biases_layer_2
         out_layer_2 = af.Sigmoid(sum_layer_2)
-
         return out_layer_2
 
     """使用BP算法计算网络中每个参数对应的梯度大小"""

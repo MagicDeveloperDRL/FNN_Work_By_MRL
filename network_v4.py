@@ -1,19 +1,20 @@
 '''''''''
-@file: network_v2.py
+@file: network_v4.py
 @author: MRL Liu
-@time: 2020/12/16 20:34
+@time: 2020/12/17 10:47
 @env: Python,Numpy
 @desc:本模式从神经元层面利用矩阵向量运算实现了一个参数化的FNN：
         默认激活函数为Sigmoid
         默认损失函数为MSE（均方误差）
-        默认网络优化算法为GD（梯度下降）
+        默认网络优化算法为SGD（随机梯度下降）,并且添加了L2正则化
         默认梯度计算算法为BP（反向传播算法）
         默认网络初始化方式为高斯分布中随机采样
-@ref:《神经网络与深度学习》
+@ref:
 @blog: https://blog.csdn.net/qq_41959920
 '''''''''
 import numpy as np
 import time
+import random
 from matplotlib import pyplot as plt
 from FNN_Work_By_Liu import activation_function as af
 from FNN_Work_By_Liu import mnist_loader
@@ -34,7 +35,7 @@ class Network(object):
         self.weights = [ np.random.randn(x,y)
                         for x,y in zip(shape_size[1:],shape_size[:-1])]
 
-    """输入一个多维向量，输出网络的输出，x是n行1列的数组/列表"""
+    """输入一个多维向量，输出网络的输出"""
     def feedforward(self,x):
         for w,b in zip(self.weights,self.biases):
             x =af.Sigmoid(np.dot(w,x)+b)
@@ -71,13 +72,28 @@ class Network(object):
             nabla_w[-l] = np.dot(delta,activation_list[-l-1].transpose())
         return (nabla_w,nabla_b)
 
-    """使用单个样本更新网络参数"""
-    def update_in_example(self,x,y_true,learning_rate):
-        nabla_ws,nable_bs = self.backprop(x,y_true)
-        self.weights = [w-learning_rate*nw
-                        for w,nw in zip(self.weights,nabla_ws)]
-        self.biases = [b-learning_rate*nb
-                       for b,nb in zip(self.biases,nable_bs)]
+    """使用mini_batch的样本更新网络参数，
+    mini_batch是一个（x，y）的样例元组的列表
+    lmbda是一个正则化参数
+    n是训练数据的大小"""
+    def update_mini_batch(self,mini_batch,learning_rate,lmbda,n):
+        # 存储本批次的整个神经网络的权重对应的梯度的累计和
+        nabla_w = [np.zeros(w.shape) for w in self.weights]
+        # 存储本批次的整个神经网络的偏置对应的梯度的累计和
+        nabla_b = [np.zeros(b.shape) for b in self.biases]
+        for x,y in mini_batch:
+            # 存储本次计算后的每个参数的梯度
+            delta_nabla_w,  delta_nabla_b= self.backprop(x, y)
+            # 将本次计算的梯度累加到之前计算的梯度
+            nabla_b = [nb + dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
+            nabla_w = [nw + dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+        # 利用本批次求得的各个参数的梯度平均值更新神经网络的权重和偏置参数
+        #self.weights = [(1-learning_rate*(lmbda/n))*w - (learning_rate / len(mini_batch)) * nw
+                        #for w, nw in zip(self.weights, nabla_w)]
+        self.weights = [w - (learning_rate / len(mini_batch)) * nw
+                        for w, nw in zip(self.weights, nabla_w)]
+        self.biases = [b - (learning_rate / len(mini_batch)) * nb
+                       for b, nb in zip(self.biases, nabla_b)]
 
     """损失函数对y_pred的偏导数"""
     def Deriv_Loss(self, y_true, y_pred):
@@ -93,39 +109,46 @@ class experiment_Network(Network):
         self.temp_loss_list = []
         self.loss_list = []
 
-    """使用GD算法训练神经网络"""
-    def train_by_GD(self, training_data, epochs, learning_rate,
-                    test_data=None):
+    """使用SGD算法训练神经网络"""
+    def train_by_SGD(self, training_data, epochs, mini_batch_size, learning_rate,
+                     lmbda = 0.0,test_data=None):
         """``training_data``是一个元组``(x, y)``的列表，它代表着输入和标签。
         ``epochs``是训练次数；
+        ``mini_batch_size``是最小梯度批量更新的数量；
         ``learning_rate``是学习率"""
 
         training_data = list(training_data)  # 将training_data转换为列表
+        n = len(training_data)  # 获取训练数据的长度
 
         if test_data:
             test_data = list(test_data)
 
         # 遍历进行epochs次的训练
         for i in range(epochs):
+            random.shuffle(training_data)  # 将列表中的元素打乱
             # 将训练数据按照mini_batch_size划分成若干组
-            for x, y in training_data:
-                self.update_in_example(x, y, learning_rate)  # 使用一个最小批次来更新神经网络
+            mini_batches = [
+                training_data[k:k + mini_batch_size]
+                for k in range(0, n, mini_batch_size)]
+            for mini_batch in mini_batches:
+                self.update_mini_batch(mini_batch, learning_rate,lmbda,len(training_data))  # 使用一个最小批次来更新神经网络
+                self.mini_batches_Loss(mini_batch)  # 计算并且记录均方损失
 
-            # 计算每个回合的损失
             self.epoch_Loss()
             # 测试数据
-            if test_data:
-                n_test_data =len(test_data)
+            if test_data and i%10==0:
+                n_test_data = len(test_data)
                 success_rate_test = self.evaluate_in_test(test_data)
                 data = training_data[:1000]
-                n_data =len(data)
+                n_data = len(data)
                 success_rate_train = self.evaluate_in_train(data)
                 print("Epoch {} :训练集中的成功率：{}/{} 测试集中的成功率：{} / {}".format(i, success_rate_train, n_data,
-                                                                         success_rate_test,n_test_data))
+                                                                         success_rate_test, n_test_data))
                 self.test_evaluate_list.append(success_rate_test)
                 self.train_evaluate_list.append(success_rate_train)
             # else:
             # print("Epoch {} complete".format(i))
+
 
     """计算每个回合测试的正确率"""
     def evaluate_in_test(self, data):
@@ -177,7 +200,8 @@ if __name__=="__main__":
     test_data = list(test_data)
     # 训练神经网络
     start_time = time.clock()  # 记录开始运行时间
-    net.train_by_GD(training_data, 1000, 1.0, test_data=test_data)
+    net.train_by_SGD(training_data[:1000], epochs=1000,mini_batch_size=10, learning_rate=3.0,
+                     lmbda=5.0,test_data=test_data)
     end_time = time.clock()  # 记录结束运行时间
     dtime = end_time - start_time
     print("本次实验训练共花费：{:.8f}秒 ".format(dtime))  # 记录结束运行时间

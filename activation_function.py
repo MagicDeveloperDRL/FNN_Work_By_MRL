@@ -18,9 +18,10 @@ def Deriv_Sigmoid(x):
     fx = Sigmoid(x)
     return fx*(1-fx)
 
+# Relu激活函数
 def Relu(x):
     return np.maximum(0, x)
-
+# Relu激活函数的导数
 def Deriv_Relu(x):
     return -np.minimum(0, x)
 
