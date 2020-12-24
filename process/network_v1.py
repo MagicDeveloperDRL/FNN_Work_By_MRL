@@ -14,7 +14,7 @@
 '''''''''
 import numpy as np
 
-from FNN_Work_By_Liu import activation_function as af
+from FNN_Work_By_Liu.process import activation_function as af
 
 """固定式的矩阵向量运算的神经网络类"""
 class Network(object):

@@ -1,14 +1,15 @@
 '''''''''
-@file: network_v6.py
+@file: network_v5.py
 @author: MRL Liu
-@time: 2020/12/18 13:19
+@time: 2020/12/18 13:03
 @env: Python,Numpy
 @desc:本模式从神经元层面利用矩阵向量运算实现了一个参数化的FNN：
         默认激活函数为Sigmoid
-        默认损失函数为交叉熵损失函数
+        默认损失函数为MSE（均方误差）
         默认网络优化算法为SGD（随机梯度下降）,并且添加了L2正则化
         默认梯度计算算法为BP（反向传播算法）
         默认网络初始化方式为Xavier初始化
+        测试了神经网络的参数保存与重加载功能（相关方法在network_tool）
 @ref:
 @blog: https://blog.csdn.net/qq_41959920
 '''''''''
@@ -16,9 +17,9 @@ import numpy as np
 import time
 import random
 from matplotlib import pyplot as plt
-from FNN_Work_By_Liu import activation_function as af
+from FNN_Work_By_Liu.process import activation_function as af
 from FNN_Work_By_Liu import mnist_loader
-
+from FNN_Work_By_Liu import network_tool as net_tool
 plt.rcParams['font.sans-serif']=['SimHei'] #使用中文字符
 plt.rcParams['axes.unicode_minus'] = False #显示负数的负号
 
@@ -32,8 +33,10 @@ class Network(object):
         self.biases = [ np.random.randn(x,1)
                         for x in shape_size[1:]]
         # 多个权重矩阵的列表，例如weights[0]表示第一层和第二层之间的权重矩阵（行数为第二层神经元数，列数为第一层神经元数）
-        self.weights = [ np.random.randn(x,y)/np.sqrt(x)
-                        for x,y in zip(shape_size[1:],shape_size[:-1])]
+        #self.weights = [ np.random.randn(x,y)/np.sqrt(x)
+                        #for x,y in zip(shape_size[1:],shape_size[:-1])]
+        self.weights = [np.random.randn(x,y)/np.sqrt((x+y)/2)
+                        for x, y in zip(shape_size[1:], shape_size[:-1])]
 
     """输入一个多维向量，输出网络的输出"""
     def feedforward(self,x):
@@ -97,6 +100,8 @@ class Network(object):
     def Deriv_Loss(self, y_true, y_pred):
         """计算损失函数对y_pred的偏导数"""
         return (y_pred - y_true)
+
+
 
 """用于实验的神经网络扩展类"""
 class experiment_Network(Network):
@@ -189,67 +194,86 @@ class experiment_Network(Network):
 
 
 
+
+
+
 if __name__=="__main__":
-    # 创建神经网络
-    net = experiment_Network([784,30,10])
-    # 创建输入数据
-    training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
-    training_data = list(training_data)
-    test_data = list(test_data)
-    # 训练神经网络
-    start_time = time.clock()  # 记录开始运行时间
-    net.train_by_SGD(training_data[:10000], epochs=100,mini_batch_size=10, learning_rate=3.0,
-                     lmbda=0.1,test_data=test_data)
-    end_time = time.clock()  # 记录结束运行时间
-    dtime = end_time - start_time
-    print("本次实验训练共花费：{:.8f}秒 ".format(dtime))  # 记录结束运行时间
-    e = net.test_evaluate_list
+    use_trained_net = False # 是否测试加载神经网络参数功能
+    if use_trained_net==True:
+        # 创建神经网络
+        net = experiment_Network([784,30,10])
+        # 创建输入数据
+        training_data, validation_data, test_data = mnist_loader.load_data_wrapper('../mnist.pkl.gz')
+        training_data = list(training_data)
+        test_data = list(test_data)
+        # 训练神经网络
+        start_time = time.clock()  # 记录开始运行时间
+        net.train_by_SGD(training_data[:1000], epochs=10,mini_batch_size=10, learning_rate=3.0,
+                         lmbda=0.1,test_data=test_data)
+        end_time = time.clock()  # 记录结束运行时间
+        dtime = end_time - start_time
+        print("本次实验训练共花费：{:.8f}秒 ".format(dtime))  # 记录结束运行时间
+        net_tool.save_net(net, "../config/net.json") #保存神经网络参数
+        e = net.test_evaluate_list
 
-    n_loss = len(net.loss_list)
-    x_data_loss = [i for i in range(n_loss)]
-    y_data_loss = net.loss_list
+        n_loss = len(net.loss_list)
+        x_data_loss = [i for i in range(n_loss)]
+        y_data_loss = net.loss_list
+        # 创建画布
+        fig = plt.figure(figsize=(12, 4))  # 创建一个大小为（14,7）的画布
 
-    # 创建画布
-    fig = plt.figure(figsize=(12, 4)) # 创建一个大小为（14,7）的画布
+        # 添加第一个窗口
+        ax1 = fig.add_subplot(131)  # 添加一个1行2列的序号为1的窗口
+        # 添加标注
+        ax1.set_title('数字识别实验的损失变化图', fontsize=14)  # 设置标题
+        ax1.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
+        ax1.set_ylabel('y(损失大小)', fontsize=14, fontstyle='oblique')
+        ax1.set_ylim(0, 1)
+        # 绘制真实函数
+        ax1.plot(x_data_loss, y_data_loss, color='red', label="损失值")
 
-    # 添加第一个窗口
-    ax1 = fig.add_subplot(131)  # 添加一个1行2列的序号为1的窗口
-    # 添加标注
-    ax1.set_title('数字识别实验的损失变化图', fontsize=14)  # 设置标题
-    ax1.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
-    ax1.set_ylabel('y(损失大小)', fontsize=14, fontstyle='oblique')
-    ax1.set_ylim(0, 1)
-    # 绘制真实函数
-    ax1.plot(x_data_loss, y_data_loss, color='red', label="损失值")
+        # 获取要绘制的数据
+        n_evaluate_train = len(net.train_evaluate_list)
+        x_data_evaluate_train = [i for i in range(n_evaluate_train)]
+        y_data_evaluate_train = [data * 0.1 for data in net.train_evaluate_list]
 
-    # 获取要绘制的数据
-    n_evaluate_train = len(net.train_evaluate_list)
-    x_data_evaluate_train = [i for i in range(n_evaluate_train)]
-    y_data_evaluate_train = [data*0.1 for data in net.train_evaluate_list]
+        # 添加第二个窗口
+        ax2 = fig.add_subplot(132)  # 添加一个1行2列的序号为1的窗口
+        # 添加标注
+        ax2.set_title('训练集中的正确率', fontsize=14)  # 设置标题
+        ax2.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
+        ax2.set_ylabel('y(正确率%)', fontsize=14, fontstyle='oblique')
+        ax2.set_ylim(0, 100)
 
-    # 添加第二个窗口
-    ax2 = fig.add_subplot(132)  # 添加一个1行2列的序号为1的窗口
-    # 添加标注
-    ax2.set_title('训练集中的正确率', fontsize=14)  # 设置标题
-    ax2.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
-    ax2.set_ylabel('y(正确率%)', fontsize=14, fontstyle='oblique')
-    ax2.set_ylim(0, 100)
+        # 绘制函数
+        ax2.plot(x_data_evaluate_train, y_data_evaluate_train, color='blue', label="正确值")
 
-    # 绘制函数
-    ax2.plot(x_data_evaluate_train, y_data_evaluate_train, color='blue', label="正确值")
+        # 获取要绘制的数据
+        n_evaluate_test = len(net.test_evaluate_list)
+        x_data_evaluate_test = [i for i in range(n_evaluate_test)]
+        y_data_evaluate_test = [data * 0.01 for data in net.test_evaluate_list]
 
-    # 获取要绘制的数据
-    n_evaluate_test = len(net.test_evaluate_list)
-    x_data_evaluate_test = [i for i in range(n_evaluate_test)]
-    y_data_evaluate_test = [data*0.01 for data in net.test_evaluate_list]
+        # 添加第三个窗口
+        ax3 = fig.add_subplot(133)  # 添加一个1行2列的序号为1的窗口
+        # 添加标注
+        ax3.set_title('测试集中的正确率', fontsize=14)  # 设置标题
+        ax3.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
+        ax3.set_ylabel('y(正确率%)', fontsize=14, fontstyle='oblique')
+        ax3.set_ylim(0, 100)
 
-    # 添加第三个窗口
-    ax3 = fig.add_subplot(133)  # 添加一个1行2列的序号为1的窗口
-    # 添加标注
-    ax3.set_title('测试集中的正确率', fontsize=14)  # 设置标题
-    ax3.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
-    ax3.set_ylabel('y(正确率%)', fontsize=14, fontstyle='oblique')
-    ax3.set_ylim(0, 100)
+        # 绘制函数
+        ax3.plot(x_data_evaluate_test, y_data_evaluate_test, color='blue', label="正确值")
+    else :
+        training_data, validation_data, test_data = mnist_loader.load_data_wrapper('../mnist.pkl.gz')
+        test_data = list(test_data)
+        # 获取训练好的神经网络
+        net = net_tool.load_net("../config/net.json")
+        #net = experiment_Network([784,30,10]) # 使用一个新建的网络测试
+        # 测试正确率
+        n_test_data = len(test_data)
+        results = [(np.argmax(net.feedforward(x)), y)
+                   for (x, y) in test_data]
+        success_rate_test = sum(int(x == y) for (x, y) in results)
 
-    # 绘制函数
-    ax3.plot(x_data_evaluate_test, y_data_evaluate_test, color='blue', label="正确值")
+        print("测试集中的成功率：{} / {}".format(success_rate_test, n_test_data))
+

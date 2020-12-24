@@ -14,8 +14,8 @@
 @blog: https://blog.csdn.net/qq_41959920
 '''''''''
 import numpy as np
-import random
-from FNN_Work_By_Liu import activation_function as af
+from FNN_Work_By_Liu.process import activation_function as af
+
 
 class Network(object):
     def __init__(self,shape_size):

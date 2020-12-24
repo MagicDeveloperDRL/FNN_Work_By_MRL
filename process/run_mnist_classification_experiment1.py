@@ -1,16 +1,17 @@
 '''''''''
-@file: run_experiment_2.py
+@file: run_mnist_classification_experiment.py
 @author: MRL Liu
 @time: 2020/12/3 17:01
 @env: Python,Numpy
-@desc: 本模块用来使用network类进行手写数字识别分类的实验
+@desc: 本模块用来使用自建的最新版本的参数化CNN进行手写数字分类实验
+    
 @ref:
 @blog: https://blog.csdn.net/qq_41959920
 '''''''''
 import numpy as np
 from matplotlib import pyplot as plt
 import random
-from FNN_Work_By_Liu import network
+from FNN_Work_By_Liu.process import network
 from FNN_Work_By_Liu import mnist_loader
 #from DeepLearningPython35 import network
 

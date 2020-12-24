@@ -1,14 +1,14 @@
 '''''''''
-@file: network_v4.py
+@file: network_v6.py
 @author: MRL Liu
-@time: 2020/12/17 10:47
+@time: 2020/12/18 13:19
 @env: Python,Numpy
 @desc:本模式从神经元层面利用矩阵向量运算实现了一个参数化的FNN：
         默认激活函数为Sigmoid
-        默认损失函数为MSE（均方误差）
+        默认损失函数为交叉熵损失函数
         默认网络优化算法为SGD（随机梯度下降）,并且添加了L2正则化
         默认梯度计算算法为BP（反向传播算法）
-        默认网络初始化方式为高斯分布中随机采样
+        默认网络初始化方式为Xavier初始化
 @ref:
 @blog: https://blog.csdn.net/qq_41959920
 '''''''''
@@ -16,11 +16,15 @@ import numpy as np
 import time
 import random
 from matplotlib import pyplot as plt
-from FNN_Work_By_Liu import activation_function as af
+from FNN_Work_By_Liu.process import activation_function as af
+from FNN_Work_By_Liu import network_tool as net_tool
 from FNN_Work_By_Liu import mnist_loader
 
 plt.rcParams['font.sans-serif']=['SimHei'] #使用中文字符
 plt.rcParams['axes.unicode_minus'] = False #显示负数的负号
+
+Net_Parameter_Save_Path = "../config/net.json"  # 网络参数保存路径
+Net_Parameter_Load_Path = "../config/net.json"  # 网络参数加载路径
 
 """参数化神经网络类"""
 class Network(object):
@@ -32,7 +36,7 @@ class Network(object):
         self.biases = [ np.random.randn(x,1)
                         for x in shape_size[1:]]
         # 多个权重矩阵的列表，例如weights[0]表示第一层和第二层之间的权重矩阵（行数为第二层神经元数，列数为第一层神经元数）
-        self.weights = [ np.random.randn(x,y)
+        self.weights = [ np.random.randn(x,y)/np.sqrt(x)
                         for x,y in zip(shape_size[1:],shape_size[:-1])]
 
     """输入一个多维向量，输出网络的输出"""
@@ -61,6 +65,7 @@ class Network(object):
         # 计算输出层误差
         delta = self.Deriv_Loss(y_true,activation_list[-1])*\
                 af.Deriv_Sigmoid(wx_plus_b_list[-1])
+        #delta = self.Deriv_Loss(y_true, activation_list[-1])
         # 计算输出层参数的梯度
         nabla_b[-1] = delta
         nabla_w[-1] = np.dot(delta,activation_list[-2].transpose())
@@ -88,9 +93,7 @@ class Network(object):
             nabla_b = [nb + dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
             nabla_w = [nw + dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
         # 利用本批次求得的各个参数的梯度平均值更新神经网络的权重和偏置参数
-        #self.weights = [(1-learning_rate*(lmbda/n))*w - (learning_rate / len(mini_batch)) * nw
-                        #for w, nw in zip(self.weights, nabla_w)]
-        self.weights = [w - (learning_rate / len(mini_batch)) * nw
+        self.weights = [(1-learning_rate*(lmbda/n))*w - (learning_rate / len(mini_batch)) * nw
                         for w, nw in zip(self.weights, nabla_w)]
         self.biases = [b - (learning_rate / len(mini_batch)) * nb
                        for b, nb in zip(self.biases, nabla_b)]
@@ -111,7 +114,7 @@ class experiment_Network(Network):
 
     """使用SGD算法训练神经网络"""
     def train_by_SGD(self, training_data, epochs, mini_batch_size, learning_rate,
-                     lmbda = 0.0,test_data=None):
+                     lmbda = 0.0,test_data=None,early_stopping_n=0):
         """``training_data``是一个元组``(x, y)``的列表，它代表着输入和标签。
         ``epochs``是训练次数；
         ``mini_batch_size``是最小梯度批量更新的数量；
@@ -123,6 +126,9 @@ class experiment_Network(Network):
         if test_data:
             test_data = list(test_data)
 
+        # 提前终止机制的设置:
+        best_accuracy = 0  # 最好的正确率
+        num_useless_epoch= 0  # 训练无效的回合数
         # 遍历进行epochs次的训练
         for i in range(epochs):
             random.shuffle(training_data)  # 将列表中的元素打乱
@@ -146,8 +152,27 @@ class experiment_Network(Network):
                                                                          success_rate_test, n_test_data))
                 self.test_evaluate_list.append(success_rate_test)
                 self.train_evaluate_list.append(success_rate_train)
+
+                # 提前终止机制
+                if early_stopping_n > 0:
+                    # 检查本回合的测试正确率是否有提升
+                    if success_rate_test > best_accuracy:
+                        best_accuracy = success_rate_test
+                        num_useless_epoch = 0
+                    else:
+                        num_useless_epoch += 1
+                    # 如果测试正确率在指定回合数内无提升则结束训练
+                    if (num_useless_epoch == early_stopping_n):
+                        print("已有{}次回合无法提升正确率，提前终止机制启动，训练结束".format(num_useless_epoch))
+                        net_tool.save_net(self,Net_Parameter_Save_Path)# 保存本次训练参数
+                        return
             # else:
             # print("Epoch {} complete".format(i))
+
+        # 保存本次训练参数
+        print("训练正常结束，正在保存网络参数...")
+        net_tool.save_net(self, Net_Parameter_Save_Path)
+        print("网络参数已经保存至:{}".format(Net_Parameter_Save_Path))
 
 
     """计算每个回合测试的正确率"""
@@ -156,13 +181,14 @@ class experiment_Network(Network):
         results = [(np.argmax(self.feedforward(x)), y)
                    for (x, y) in data]
         return sum(int(x == y) for (x, y) in results)
+    """计算每个回合训练的正确率"""
     def evaluate_in_train(self, data):
         """返回测试数据中的正确率"""
         results = [(np.argmax(self.feedforward(x)), np.argmax(y))
                    for (x, y) in data]
         return sum(int(x == y) for (x, y) in results)
 
-    """均方损失函数（MSE），并记录损失值"""
+    """均方损失函数（MSE）"""
     def MSE_Loss(self, y_true, y_pred):
         inpit_n_row = len(y_true)
         result = np.sum(1 / inpit_n_row * np.square(y_true - y_pred))
@@ -195,13 +221,13 @@ if __name__=="__main__":
     # 创建神经网络
     net = experiment_Network([784,30,10])
     # 创建输入数据
-    training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+    training_data, validation_data, test_data = mnist_loader.load_data_wrapper('../mnist.pkl.gz')
     training_data = list(training_data)
     test_data = list(test_data)
     # 训练神经网络
     start_time = time.clock()  # 记录开始运行时间
-    net.train_by_SGD(training_data[:1000], epochs=1000,mini_batch_size=10, learning_rate=3.0,
-                     lmbda=5.0,test_data=test_data)
+    net.train_by_SGD(training_data, epochs=20000,mini_batch_size=10, learning_rate=3.0,
+                     lmbda=0.1,test_data=test_data,early_stopping_n=10)
     end_time = time.clock()  # 记录结束运行时间
     dtime = end_time - start_time
     print("本次实验训练共花费：{:.8f}秒 ".format(dtime))  # 记录结束运行时间
