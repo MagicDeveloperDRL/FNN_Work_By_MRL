@@ -60,13 +60,13 @@ class MSE_Loss(object):
 
     """计算损失的偏导数"""
     @staticmethod
-    def deriv(y_true, y_pred):
+    def deriv(wx_plus_b,y_true, y_pred):
         return y_pred - y_true
 
     """计算输出层的误差"""
     @staticmethod
     def delta(wx_plus_b,y_true, y_pred):
-        return MSE_Loss.deriv(y_true, y_pred)* Deriv_Sigmoid(wx_plus_b)
+        return MSE_Loss.deriv(wx_plus_b,y_true, y_pred)* Deriv_Sigmoid(wx_plus_b)
 """交叉熵损失函数"""
 class CrossEntropy_Loss(object):
 

@@ -1,5 +1,5 @@
 '''''''''
-@file: run_function_regression_experiment.py
+@file: run_function_regression_experiment1.py
 @author: MRL Liu
 @time: 2020/12/3 17:00
 @env: Python,Numpy

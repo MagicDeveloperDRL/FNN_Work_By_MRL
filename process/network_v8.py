@@ -1,11 +1,11 @@
 '''''''''
-@file: network_v7.py
+@file: network_v8.py
 @author: MRL Liu
-@time: 2020/12/23 16:12
+@time: 2020/12/26 17:25
 @env: Python,Numpy
 @desc:本模式从神经层角度利用矩阵向量运算实现了一个参数化的FNN：
         （1）网络初始化方式参数化，提供随机初始化、Xavier初始化、导入之前参数等多种方式
-        （2）默认激活函数为Sigmoid,输出层也具有激活函数。
+        （2）默认激活函数为Sigmoid,输出层是否激活可自由选择。
         （3）损失函数参数化，可以选择MSE损失函数、交叉熵损失函数
         （4）默认梯度计算算法为BP（反向传播算法）
         （5）提供网络优化算法为SGD（随机梯度下降）,并且添加了L2正则化
@@ -30,18 +30,25 @@ Net_Parameter_Load_Path = "../config/net.json"  # 网络参数加载路径
 
 """参数化神经网络类"""
 class Network(object):
-    def __init__(self,shape_size,initializer_type,loss_function,filepath=None):
+    def __init__(self,shape_size,initializer_type,loss_function,filepath=None,activate_out=True):
         """shape_size是一个包含有各层神经元数量的列表"""
         self.num_layer = len(shape_size)# 神经层的数量（输入层+中间层+输出层）
         self.shape_size = shape_size # 包含有各层神经元数量的列表
         self.initializer_type = initializer_type # 参数初始化方式
         Parameter_Initializer.Init(self,initializer_type,filepath=filepath) # 初始化参数
         self.loss_function = loss_function # 损失函数
-
+        self.activate_out =activate_out # 输出层是否需要激活函数
     """输入一个多维向量，输出网络的输出"""
     def feedforward(self,x):
-        for w,b in zip(self.weights,self.biases):
-            x =Sigmoid(np.dot(w,x)+b)
+        if self.activate_out:
+            for w,b in zip(self.weights,self.biases):
+                x =Sigmoid(np.dot(w,x)+b)
+        else:
+            # 中间层使用激活函数
+            for w, b in zip(self.weights[:-1], self.biases[:-1]):
+                x = Sigmoid(np.dot(w, x) + b)
+            # 输出层不使用激活函数
+            x = np.dot(self.weights[-1], x) + self.biases[-1]
         return x
 
     """使用BP算法计算网络中每个参数对应的梯度大小"""
@@ -54,15 +61,30 @@ class Network(object):
         activation = x  # 输入层的输入值直接作为激活值
         activation_list =[x] # 存储每个神经层的输出
         wx_plus_b_list = []
-        # 遍历每个神经层（除了输入层）的权重矩阵和偏置向量
-        for w,b in zip(self.weights,self.biases):
-            wx_plus_b = np.dot(w,activation)+b
+        if self.activate_out:
+            # 遍历中间层（除了输入层）的权重矩阵和偏置向量
+            for w, b in zip(self.weights, self.biases):
+                wx_plus_b = np.dot(w, activation) + b
+                wx_plus_b_list.append(wx_plus_b)
+                activation = Sigmoid(wx_plus_b)
+                activation_list.append(activation)
+        else:
+            # 遍历中间层（除了输入层）的权重矩阵和偏置向量
+            for w,b in zip(self.weights[:-1],self.biases[:-1]):
+                wx_plus_b = np.dot(w,activation)+b
+                wx_plus_b_list.append(wx_plus_b)
+                activation = Sigmoid(wx_plus_b)
+                activation_list.append(activation)
+            # 计算输出层
+            wx_plus_b = np.dot(self.weights[-1], activation) + self.biases[-1]
             wx_plus_b_list.append(wx_plus_b)
-            activation = Sigmoid(wx_plus_b)
-            activation_list.append(activation)
+            activation_list.append(wx_plus_b)
         # 反向传播(从输出层开始更新神经网络的参数)
         # 计算输出层误差
-        delta = (self.loss_function).delta(wx_plus_b=wx_plus_b_list[-1],y_pred=activation_list[-1],y_true=y_true)
+        if self.activate_out:
+            delta = (self.loss_function).delta(wx_plus_b=wx_plus_b_list[-1], y_pred=activation_list[-1], y_true=y_true)
+        else:
+            delta = (self.loss_function).deriv(wx_plus_b=wx_plus_b_list[-1], y_pred=activation_list[-1], y_true=y_true)
         # 计算输出层参数的梯度
         nabla_b[-1] = delta
         nabla_w[-1] = np.dot(delta,activation_list[-2].transpose())

@@ -11,12 +11,12 @@ import random
 import time
 from matplotlib import pyplot as plt
 from FNN_Work_By_Liu.network_tool import *
-from FNN_Work_By_Liu.process.network_v7 import Network
+from FNN_Work_By_Liu.process.network_v8 import Network
 
 plt.rcParams['font.sans-serif']=['SimHei'] #使用中文字符
 plt.rcParams['axes.unicode_minus'] = False #显示负数的负号
-Net_Parameter_Save_Path = "config/regression_net.json" # 网络参数保存路径
-Net_Parameter_Load_Path = "config/regression_net.json" # 网络参数加载路径
+Net_Parameter_Save_Path = "config/regression_net1.json"  # 网络参数保存路径
+Net_Parameter_Load_Path = "config/regression_net1.json"  # 网络参数加载路径
 
 
 
@@ -24,8 +24,8 @@ Net_Parameter_Load_Path = "config/regression_net.json" # 网络参数加载路�
 class regression_experiment_Network(Network):
     def __init__(self, shape_size,
                  initializer_type=Parameter_Initializer.type.XAVIER,
-                 loss_function = MSE_Loss,filepath=None):
-        super().__init__(shape_size,initializer_type,loss_function,filepath)
+                 loss_function = MSE_Loss,filepath=None,activate_out=True):
+        super().__init__(shape_size,initializer_type,loss_function,filepath,activate_out)
 
         self.train_loss_list = []
         self.train_accuracy_list = [] # 测试正确率列表
@@ -126,15 +126,56 @@ class regression_experiment_Network(Network):
         loss +=0.5*(lmbda/len(data))*sum(np.linalg.norm(w)**2 for w in self.weights)
         return loss
 
-    """绘制每个回合的损失值和正确率的变化趋势"""
-    def draw_loss_and_accuracy_plot(self,training_data,test_data):
+    """绘制函数拟合的状况图"""
+    def draw_function_plot_renormal(self,training_data,test_data):
         # 创建画布
-        fig = plt.figure(figsize=(12, 4))  # 创建一个指定大小的画布
+        fig = plt.figure(figsize=(12, 6))  # 创建一个指定大小的画布
 
         # 添加第1个窗口
-        ax1 = fig.add_subplot(131)  # 添加一个1行2列的序号为1的窗口
+        ax1 = fig.add_subplot(121)  # 添加一个1行2列的序号为1的窗口
         # 添加标注
-        ax1.set_title('训练集中的函数拟合', fontsize=14)  # 设置标题
+        ax1.set_title('训练集中的函数拟合状况', fontsize=14)  # 设置标题
+        ax1.set_xlabel('x-自变量', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
+        ax1.set_ylabel('y-因变量', fontsize=14, fontstyle='oblique')
+        # 获取数据集
+        x_data_train = [data[0] for data in training_data]
+        y_true_data_train = [data[1] for data in training_data]
+        # 转换
+        x_data_train = np.array(x_data_train)
+        y_true_data_train = np.array(y_true_data_train)
+        # 归一化
+        #x_pre_data_train = normalize(x_data_train)
+        y_pre_data_train = [renormalize(net.feedforward(x)[0][0],y_true_data_train) for x in x_data_train]
+        line1, = ax1.plot(x_data_train, y_true_data_train, color='blue', label="真实值")
+        line2, = ax1.plot(x_data_train, y_pre_data_train, color='red', label="预测值")
+        ax1.legend(handles=[line1, line2], loc=4)  # 绘制图例说明
+        plt.grid(True)#启用表格
+        # 添加第2个窗口
+        ax2 = fig.add_subplot(122)  # 添加一个1行2列的序号为1的窗口
+        # 添加标注
+        ax2.set_title('测试集中的函数拟合状况', fontsize=14)  # 设置标题
+        ax2.set_xlabel('x-自变量', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
+        ax2.set_ylabel('y-因变量', fontsize=14, fontstyle='oblique')
+
+        # 获取要绘制的数据
+        x_data_test = [data[0] for data in test_data]
+        y_true_data_test = [data[1] for data in test_data]
+        y_true_data_test = np.array(y_true_data_test)
+        y_pre_data_test = [renormalize(net.feedforward(x)[0][0],y_true_data_train) for x in x_data_test]
+        line1, = ax2.plot(x_data_test, y_true_data_test, color='blue', label="真实值")
+        line2, = ax2.plot(x_data_test, y_pre_data_test, color='red', label="预测值")
+        ax2.legend(handles=[line1, line2], loc=4)  # 绘制图例说明
+        plt.grid(True) #启用表格
+
+    """绘制函数拟合的状况图"""
+    def draw_function_plot(self, training_data, test_data):
+        # 创建画布
+        fig = plt.figure(figsize=(12, 6))  # 创建一个指定大小的画布
+
+        # 添加第1个窗口
+        ax1 = fig.add_subplot(121)  # 添加一个1行2列的序号为1的窗口
+        # 添加标注
+        ax1.set_title('训练集中的函数拟合状况', fontsize=14)  # 设置标题
         ax1.set_xlabel('x-自变量', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
         ax1.set_ylabel('y-因变量', fontsize=14, fontstyle='oblique')
         # 绘制函数
@@ -144,11 +185,11 @@ class regression_experiment_Network(Network):
         line1, = ax1.plot(x_data_train, y_true_data_train, color='blue', label="真实值")
         line2, = ax1.plot(x_data_train, y_pre_data_train, color='red', label="预测值")
         ax1.legend(handles=[line1, line2], loc=4)  # 绘制图例说明
-        plt.grid(True)#启用表格
+        plt.grid(True)  # 启用表格
         # 添加第2个窗口
-        ax2 = fig.add_subplot(132)  # 添加一个1行2列的序号为1的窗口
+        ax2 = fig.add_subplot(122)  # 添加一个1行2列的序号为1的窗口
         # 添加标注
-        ax2.set_title('测试集中的函数拟合', fontsize=14)  # 设置标题
+        ax2.set_title('测试集中的函数拟合状况', fontsize=14)  # 设置标题
         ax2.set_xlabel('x-自变量', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
         ax2.set_ylabel('y-因变量', fontsize=14, fontstyle='oblique')
 
@@ -159,76 +200,48 @@ class regression_experiment_Network(Network):
         line1, = ax2.plot(x_data_test, y_true_data_test, color='blue', label="真实值")
         line2, = ax2.plot(x_data_test, y_pre_data_test, color='red', label="预测值")
         ax2.legend(handles=[line1, line2], loc=4)  # 绘制图例说明
-        plt.grid(True) #启用表格
-
-        # 添加第3个窗口
-        ax3 = fig.add_subplot(133)  # 添加一个1行2列的序号为1的窗口
-        # 添加标注
-        ax3.set_title('训练过程中的损失变化', fontsize=14)  # 设置标题
-        ax3.set_xlabel('x(训练次数)', fontsize=14, fontfamily='sans-serif', fontstyle='italic')
-        ax3.set_ylabel('y(损失大小)', fontsize=14, fontstyle='oblique')
-        ax3.set_ylim(0, 1)
-        # 获取要绘制的数据
-        n_loss = len(self.train_loss_list)  # 训练集和测试集的正确个数都为回合数
-        # 绘制函数
-        line1, = ax2.plot(range(1, n_loss + 1), self.train_loss_list, color='blue', label="训练集")
-        # 绘制函数
-        line2, = ax2.plot(range(1, n_loss + 1), self.train_loss_list, color='red', label="测试集")
-        ax3.legend(handles=[line1, line2], loc=4)  # 绘制图例说明
-        # plt.grid(True) #启用表格
+        plt.grid(True)  # 启用表格
 
 """要拟合的目标函数"""
-def Target_Function(x, a=2.0, b=1.0, c=1.0, d=1.0,n=10):
-    #y = 0.0
-    #for i in range(n):
-        #y += a * np.sin(b * x) + c * np.sin(d * x)
-    y = a * np.sin(b * x) + c * np.cos(d * x)
-    # y = a*b*c*d*x
+def Target_Function(x, a=2.0, b=1.0, c=3.0, d=2.0,n=10):
+    y = 0.0
+    for i in range(n):
+        y += a * np.sin(b * x) + c * np.sin(d * x)
+    #y = a * np.sin(b * x) + c * np.cos(d * x)
+    #y = a*b*c*d*x
     return y
 
-"""归一化函数（将数据限制到0-1之间）"""
-def normalize(data,data_min=0,data_max=0):
-    if data_min==0 and data_max==0:
-        data_min, data_max = data.min(), data.max()
-    data = (data - data_min) / (data_max - data_min)
-    return (data,data_min,data_max)
+
 """反归一化函数（）"""
 def renormalize(norm_data, data):
     data_min, data_max = data.min(), data.max()
     return norm_data * (data_max - data_min) + data_min
+"""归一化函数（将数据限制到0-1之间）"""
+def normalize(data):
+    data_min, data_max = data.min(), data.max()
+    data = (data - data_min) / (data_max - data_min)
+    return data
 
-
-# 归一化数据集(包含数据和标签)
-def normalize_dataset(dataset):
-    xs = np.array([data[0] for data in dataset])
-    xs = normalize(xs)
-    ys = np.array([data[1] for data in dataset])
-    ys = normalize(ys)
-    nor_dataset = [ (x,y) for x,y in zip(xs,ys)]
-    return nor_dataset
-def renormalize_dataset(norm_dataset,dataset):
-    xs = np.array([data[0] for data in dataset])
-    xs = renormalize(xs)
-    ys = np.array([data[1] for data in dataset])
-    ys = renormalize(ys)
-    nor_dataset = [ (x,y) for x,y in zip(xs,ys)]
-    return nor_dataset
 
 """构建数据集"""
-def get_DataSet(start = 0,stop = 2,num = 50,Normal=False):
+def get_DataSet(start = 0,stop = 2,num = 50,add_Noise=False,Normal=False):
     # 构建样本和标签
     x_data = np.linspace(start, stop, num)  # 从0-2之间均匀采样的50个样本
     #x_data = np.arange(5)  # 从0-2之间均匀采样的50个样本
-    y_data= Target_Function(x_data)
+    y_data = Target_Function(x_data)
+    if add_Noise:
+        noise = np.random.normal(0, 0.5, x_data.shape).astype(np.float32)
+        y_data+=noise
+    dataSet = [(x, y) for x, y in zip(x_data, y_data)]
+    #x_data = normalize(x_data)
     if Normal:
-        y_data,data_min,data_max = normalize(y_data)  # 归一化
-        x_data,data_min,data_max = normalize(x_data,data_min,data_max)
+        y_data_normal = normalize(y_data)  # 归一化
+        #x_data_normal = normalize(x_data)
+        dataSet_normal = [(x, y) for x, y in zip(x_data, y_data_normal)]
+        return (dataSet,dataSet_normal)
+    else:
+        return dataSet
 
-    # 定义输入数据
-    dataSet = [(x, y) for x,y in zip(x_data,y_data) ]
-    #y_data = Normalization([dataSet[i][1] for i in step])
-    #dataSet = np.array(dataSet)
-    return dataSet
 
 
 if __name__ =="__main__":
@@ -236,17 +249,19 @@ if __name__ =="__main__":
     net = regression_experiment_Network(shape_size=[1,30,30,1],
                                             initializer_type=Parameter_Initializer.type.LOAD,
                                             loss_function=MSE_Loss,
-                                            filepath=Net_Parameter_Load_Path)
+                                            filepath=Net_Parameter_Load_Path,
+                                            activate_out=True)
     # 创建输入数据
-    training_data = get_DataSet(0, 30, 5000,True)
-    test_data = get_DataSet(2, 20, 100,True)
+    training_data, training_data_normal= get_DataSet(-10, 10, 5000,add_Noise=True,Normal=True)
+    test_data,test_data_normal = get_DataSet(-5, 5, 100,add_Noise=False,Normal=True)
     #training_data = list(training_data)
     #test_data = list(test_data)
     # 训练神经网络
-    net.train_by_SGD(training_data, epochs=1000, mini_batch_size=20, learning_rate=1,
-                     lmbda=0.1, test_data=test_data, early_stopping_n=10,
+    net.train_by_SGD(training_data_normal, epochs=1000, mini_batch_size=50, learning_rate=1,
+                     lmbda=0.1, test_data=test_data_normal, early_stopping_n=10,
                      store_test_loss_and_accuracy=False,
                      store_training_loss_and_accuracy=False)
 
     # 绘制图像
-    net.draw_loss_and_accuracy_plot(training_data,test_data)
+    #net.draw_function_plot(training_data_normal,test_data_normal)
+    net.draw_function_plot_renormal(training_data, test_data)
