@@ -31,10 +31,8 @@ class classification_experiment_Network(Network):
         self.train_accuracy_list = [] # 测试正确率列表
         self.test_loss_list = []
         self.test_accuracy_list = []  # 训练正确率列表
-
-
-    """使用SGD算法训练神经网络"""
-    def train_by_SGD(self, training_data, #元组(x, y)的列表，代表着输入和标签。
+    """使用MBGD算法训练神经网络"""
+    def train_by_MBGD(self, training_data, #元组(x, y)的列表，代表着输入和标签。
                      epochs, # 训练次数
                      mini_batch_size, # 最小梯度批量更新的数量；
                      learning_rate,# 学习率
@@ -169,18 +167,18 @@ def vectorized_lable(j):
 if __name__=="__main__":
     # 创建神经网络
     net = classification_experiment_Network(shape_size=[784, 30, 10],
-                                            initializer_type=Parameter_Initializer.type.XAVIER,
+                                            initializer_type=Parameter_Initializer.type.LOAD,
                                             loss_function=CrossEntropy_Loss,
                                             filepath=Net_Parameter_Load_Path)
     # 创建输入数据
     training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
     training_data = list(training_data)
-    test_data = list(test_data)
+    #test_data = list(test_data)
     # 训练神经网络
-    net.train_by_SGD(training_data[:10000], epochs=30, mini_batch_size=10, learning_rate=0.5,
+    net.train_by_MBGD(training_data[:10000], epochs=25, mini_batch_size=10, learning_rate=0.5,
                      lmbda=0.1, test_data=test_data, early_stopping_n=10,
-                     store_test_loss_and_accuracy=False,
-                     store_training_loss_and_accuracy=False
+                     store_test_loss_and_accuracy=True,
+                     store_training_loss_and_accuracy=True
                      )
     # 绘制图像
     net.draw_loss_and_accuracy_plot()

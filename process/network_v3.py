@@ -6,7 +6,7 @@
 @desc:本模式从神经元层面利用矩阵向量运算实现了一个参数化的FNN：
         默认激活函数为Sigmoid
         默认损失函数为MSE（均方误差）
-        默认网络优化算法为SGD（随机梯度下降）
+        默认网络优化算法为MBGD（最小批次梯度下降）
         默认梯度计算算法为BP（反向传播算法）
         默认网络初始化方式为高斯分布中随机采样
 @ref:
@@ -104,8 +104,8 @@ class experiment_Network(Network):
         self.temp_loss_list = []
         self.loss_list = []
 
-    """使用SGD算法训练神经网络"""
-    def train_by_SGD(self, training_data, epochs, mini_batch_size, learning_rate,
+    """使用MBGD算法训练神经网络"""
+    def train_by_MBGD(self, training_data, epochs, mini_batch_size, learning_rate,
                      test_data=None):
         """``training_data``是一个元组``(x, y)``的列表，它代表着输入和标签。
         ``epochs``是训练次数；
@@ -195,7 +195,7 @@ if __name__=="__main__":
     test_data = list(test_data)
     # 训练神经网络
     start_time = time.clock()  # 记录开始运行时间
-    net.train_by_SGD(training_data, 1000,32, 1.0, test_data=test_data)
+    net.train_by_MBGD(training_data, 1000,32, 1.0, test_data=test_data)
     end_time = time.clock()  # 记录结束运行时间
     dtime = end_time - start_time
     print("本次实验训练共花费：{:.8f}秒 ".format(dtime))  # 记录结束运行时间

@@ -33,8 +33,8 @@ class regression_experiment_Network(Network):
         self.test_accuracy_list = []  # 训练正确率列表
 
 
-    """使用SGD算法训练神经网络"""
-    def train_by_SGD(self, training_data, #元组(x, y)的列表，代表着输入和标签。
+    """使用MBGD算法训练神经网络"""
+    def train_by_MBGD(self, training_data, #元组(x, y)的列表，代表着输入和标签。
                      epochs, # 训练次数
                      mini_batch_size, # 最小梯度批量更新的数量；
                      learning_rate,# 学习率
@@ -254,14 +254,11 @@ if __name__ =="__main__":
     # 创建输入数据
     training_data, training_data_normal= get_DataSet(-10, 10, 5000,add_Noise=True,Normal=True)
     test_data,test_data_normal = get_DataSet(-5, 5, 100,add_Noise=False,Normal=True)
-    #training_data = list(training_data)
-    #test_data = list(test_data)
     # 训练神经网络
-    net.train_by_SGD(training_data_normal, epochs=1000, mini_batch_size=50, learning_rate=1,
+    net.train_by_MBGD(training_data_normal, epochs=1000, mini_batch_size=50, learning_rate=1,
                      lmbda=0.1, test_data=test_data_normal, early_stopping_n=10,
                      store_test_loss_and_accuracy=False,
                      store_training_loss_and_accuracy=False)
 
     # 绘制图像
-    #net.draw_function_plot(training_data_normal,test_data_normal)
     net.draw_function_plot_renormal(training_data, test_data)
