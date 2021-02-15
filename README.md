@@ -1,4 +1,4 @@
-# FNN_Work_By_Liu
+# FNN_Work_By_MRL
  本项目是《图像合成技术》课程作业，编码作者是MRL Liu。
 
 #### 主要内容：
